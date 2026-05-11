@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Burraco">
+<title>Burraco – Segnapunti</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f4f0; color: #1a1a1a; min-height: 100vh; }
+  .app { max-width: 480px; margin: 0 auto; padding: 1rem; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+  h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+  h2 { font-size: 20px; font-weight: 600; }
+  .subtitle { font-size: 14px; color: #888; margin-top: 2px; margin-bottom: 1.5rem; }
+  .card { background: #fff; border-radius: 16px; padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  label { font-size: 13px; color: #888; display: block; margin-bottom: 5px; margin-top: 14px; }
+  label:first-child { margin-top: 0; }
+  input[type=text], select {
+    width: 100%; padding: 10px 12px; border: 1.5px solid #e5e5e5;
+    border-radius: 10px; font-size: 16px; color: #1a1a1a;
+    background: #fafafa; outline: none; appearance: none;
+  }
+  input[type=text]:focus, select:focus { border-color: #2d6a4f; background: #fff; }
+  .btn {
+    display: block; width: 100%; padding: 14px;
+    border-radius: 12px; font-size: 16px; font-weight: 600;
+    cursor: pointer; text-align: center; border: none; margin-top: 10px;
+    transition: transform 0.1s, opacity 0.1s;
+  }
+  .btn:active { transform: scale(0.97); opacity: 0.9; }
+  .btn-primary { background: #2d6a4f; color: #fff; }
+  .btn-secondary { background: #fff; color: #2d6a4f; border: 1.5px solid #2d6a4f; }
+  .btn-danger { background: #fff; color: #c0392b; border: 1.5px solid #c0392b; }
+  .btn-sm { padding: 7px 14px; font-size: 13px; width: auto; display: inline-block; border-radius: 8px; margin-top: 0; }
+  .scoreboard { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+  .score-card { background: #fff; border-radius: 14px; padding: 1rem; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .score-label { font-size: 12px; color: #888; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .score-value { font-size: 36px; font-weight: 700; color: #2d6a4f; letter-spacing: -1px; }
+  .score-target { font-size: 11px; color: #bbb; margin-top: 2px; }
+  .divider { border: none; border-top: 1px solid #f0f0f0; margin: 1rem 0; }
+  .hand-section-title { font-size: 13px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .counter-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f5f5f5; }
+  .counter-row:last-of-type { border-bottom: none; }
+  .counter-name { font-size: 15px; font-weight: 500; }
+  .counter-pts { font-size: 12px; color: #aaa; margin-top: 1px; }
+  .counter-controls { display: flex; align-items: center; gap: 12px; }
+  .counter-btn { width: 32px; height: 32px; border-radius: 50%; background: #f0f0f0; border: none; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #333; line-height: 1; font-weight: 300; }
+  .counter-btn:active { background: #e0e0e0; }
+  .counter-val { font-size: 17px; font-weight: 600; min-width: 24px; text-align: center; }
+  .hand-total-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding: 10px 12px; background: #f5f9f7; border-radius: 10px; }
+  .hand-total-bar span:first-child { font-size: 13px; color: #666; }
+  .hand-total-val { font-size: 17px; font-weight: 700; }
+  .hand-total-val.negative { color: #c0392b; }
+  .hand-total-val.positive { color: #2d6a4f; }
+
+  /* Toggle switch custom */
+  .toggle-wrap { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .toggle { width: 48px; height: 28px; border-radius: 14px; background: #ddd; position: relative; cursor: pointer; transition: background 0.2s; user-select: none; -webkit-user-select: none; flex-shrink: 0; }
+  .toggle.on { background: #c0392b; }
+  .toggle.disabled { opacity: 0.3; cursor: default; }
+  .toggle-knob { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+  .toggle.on .toggle-knob { left: 23px; }
+
+  .photo-area { border: 2px dashed #d5e8df; border-radius: 12px; padding: 1.5rem 1rem; text-align: center; cursor: pointer; margin-bottom: 8px; background: #f8fdf9; }
+  .photo-icon { font-size: 28px; margin-bottom: 6px; }
+  .photo-label { font-size: 14px; color: #666; }
+  .photo-result { font-size: 13px; color: #555; line-height: 1.6; padding: 8px; background: #f5f9f7; border-radius: 8px; margin-top: 6px; }
+  .photo-result strong { color: #2d6a4f; font-size: 15px; }
+  input[type=file] { display: none; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #ddd; border-top-color: #2d6a4f; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .history-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+  .history-row:last-child { border-bottom: none; }
+  .history-hand { color: #aaa; font-size: 12px; }
+  .history-delta { font-weight: 600; }
+  .history-running { color: #888; font-size: 12px; }
+  .winner-wrap { text-align: center; padding: 2rem 1rem; }
+  .trophy { font-size: 64px; margin-bottom: 12px; }
+  .winner-title { font-size: 26px; font-weight: 700; }
+  .winner-score { font-size: 18px; color: #888; margin-top: 6px; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SETUP -->
+<div id="screen-setup" class="screen active">
+  <h1>🃏 Burraco</h1>
+  <p class="subtitle">Segnapunti</p>
+  <div class="card">
+    <label>Giocatore / Coppia 1</label>
+    <input type="text" id="t1name" placeholder="es. Giacomo & Franco">
+    <label style="margin-top:16px;">Giocatore / Coppia 2</label>
+    <input type="text" id="t2name" placeholder="es. Ale & Claudio">
+    <div class="divider"></div>
+    <label>Punteggio obiettivo</label>
+    <select id="target">
+      <option value="1005">1005 punti</option>
+      <option value="1505">1505 punti</option>
+      <option value="2005">2005 punti</option>
+      <option value="0">Punteggio libero</option>
+    </select>
+  </div>
+  <button class="btn btn-primary" onclick="startGame()">Inizia partita →</button>
+</div>
+
+<!-- GAME -->
+<div id="screen-game" class="screen">
+  <div class="topbar">
+    <h2>Mano <span id="hand-num">1</span></h2>
+    <button class="btn btn-sm btn-secondary" onclick="showHistory()">Storico</button>
+  </div>
+
+  <div class="scoreboard">
+    <div class="score-card">
+      <div class="score-label" id="t1-label">Team 1</div>
+      <div class="score-value" id="t1-total">0</div>
+      <div class="score-target" id="t1-target"></div>
+    </div>
+    <div class="score-card">
+      <div class="score-label" id="t2-label">Team 2</div>
+      <div class="score-value" id="t2-total">0</div>
+      <div class="score-target" id="t2-target"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label style="margin-top:0;">Chi ha chiuso? (+100 pt)</label>
+    <select id="closer" onchange="updateHandTotals()">
+      <option value="">— Nessuno —</option>
+      <option value="t1" id="closer-t1">Team 1</option>
+      <option value="t2" id="closer-t2">Team 2</option>
+    </select>
+  </div>
+
+  <!-- BURACHI T1 -->
+  <div class="card">
+    <div class="hand-section-title" id="t1-buraco-label">Burrachi Team 1</div>
+    <div class="counter-row">
+      <div><div class="counter-name">Pulito</div><div class="counter-pts">+200 pt</div></div>
+      <div class="counter-controls">
+        <button class="counter-btn" onclick="change('t1','bp',-1)">−</button>
+        <span class="counter-val" id="t1-bp">0</span>
+        <button class="counter-btn" onclick="change('t1','bp',1)">+</button>
+      </div>
+    </div>
+    <div class="counter-row">
+      <div><div class="counter-name">Semi-pulito</div><div class="counter-pts">+150 pt</div></div>
+      <div class="counter-controls">
+        <button class="counter-btn" onclick="change('t1','bsp',-1)">−</button>
+        <span class="counter-val" id="t1-bsp">0</span>
+        <button class="counter-btn" onclick="change('t1','bsp',1)">+</button>
+      </div>
+    </div>
+    <div class="counter-row">
+      <div><div class="counter-name">Sporco</div><div class="counter-pts">+100 pt</div></div>
+      <div class="counter-controls">
+        <button class="counter-btn" onclick="change('t1','bs',-1)">−</button>
+        <span class="counter-val" id="t1-bs">0</span>
+        <button class="counter-btn" onclick="change('t1','bs',1)">+</button>
+      </div>
+    </div>
+    <div class="counter-row" id="t1-poz-row">
+      <div><div class="counter-name">Pozzetto non preso</div><div class="counter-pts">−100 pt</div></div>
+      <div class="toggle-wrap">
+        <div class="toggle" id="t1-poz-toggle" onclick="togglePoz('t1')">
+          <div class="toggle-knob"></div>
+        </div>
+      </div>
+    </div>
+    <div class="counter-row" style="border-bottom:none; padding-bottom:0;">
+      <div style="width:100%;">
+        <div class="counter-name">Da pagare</div>
+        <div class="counter-pts">punti carte rimaste in mano (sottratti)</div>
+        <input type="number" id="t1-neg" min="0" placeholder="es. 25" inputmode="numeric"
+          style="margin-top:8px;width:100%;padding:8px 12px;border:1.5px solid #e5e5e5;border-radius:10px;font-size:18px;font-weight:600;color:#c0392b;background:#fdf9f9;"
+          oninput="updateHandTotals()">
+      </div>
+    </div>
+    <div class="hand-total-bar">
+      <span>Totale mano</span>
+      <span class="hand-total-val positive" id="t1-hand-tot">0</span>
+    </div>
+  </div>
+
+  <!-- BURACHI T2 -->
+  <div class="card">
+    <div class="hand-section-title" id="t2-buraco-label">Burrachi Team 2</div>
+    <div class="counter-row">
+      <div><div class="counter-name">Pulito</div><div class="counter-pts">+200 pt</div></div>
+      <div class="counter-controls">
+        <button class="counter-btn" onclick="change('t2','bp',-1)">−</button>
+        <span class="counter-val" id="t2-bp">0</span>
+        <button class="counter-btn" onclick="change('t2','bp',1)">+</button>
+      </div>
+    </div>
+    <div class="counter-row">
+      <div><div class="counter-name">Semi-pulito</div><div class="counter-pts">+150 pt</div></div>
+      <div class="counter-controls">
+        <button class="counter-btn" onclick="change('t2','bsp',-1)">−</button>
+        <span class="counter-val" id="t2-bsp">0</span>
+        <button class="counter-btn" onclick="change('t2','bsp',1)">+</button>
+      </div>
+    </div>
+    <div class="counter-row">
+      <div><div class="counter-name">Sporco</div><div class="counter-pts">+100 pt</div></div>
+      <div class="counter-controls">
+        <button class="counter-btn" onclick="change('t2','bs',-1)">−</button>
+        <span class="counter-val" id="t2-bs">0</span>
+        <button class="counter-btn" onclick="change('t2','bs',1)">+</button>
+      </div>
+    </div>
+    <div class="counter-row" id="t2-poz-row">
+      <div><div class="counter-name">Pozzetto non preso</div><div class="counter-pts">−100 pt</div></div>
+      <div class="toggle-wrap">
+        <div class="toggle" id="t2-poz-toggle" onclick="togglePoz('t2')">
+          <div class="toggle-knob"></div>
+        </div>
+      </div>
+    </div>
+    <div class="counter-row" style="border-bottom:none; padding-bottom:0;">
+      <div style="width:100%;">
+        <div class="counter-name">Da pagare</div>
+        <div class="counter-pts">punti carte rimaste in mano (sottratti)</div>
+        <input type="number" id="t2-neg" min="0" placeholder="es. 25" inputmode="numeric"
+          style="margin-top:8px;width:100%;padding:8px 12px;border:1.5px solid #e5e5e5;border-radius:10px;font-size:18px;font-weight:600;color:#c0392b;background:#fdf9f9;"
+          oninput="updateHandTotals()">
+      </div>
+    </div>
+    <div class="hand-total-bar">
+      <span>Totale mano</span>
+      <span class="hand-total-val positive" id="t2-hand-tot">0</span>
+    </div>
+  </div>
+
+  <!-- FOTO -->
+  <div class="card">
+    <div class="hand-section-title">Scansione carte sul tavolo</div>
+    <p style="font-size:13px;color:#888;margin-bottom:12px;">Fotografa le carte calate per contare i punti automaticamente con AI.</p>
+
+    <label for="file1" class="photo-area" style="display:block; cursor:pointer; margin-bottom:8px;">
+      <div class="photo-icon">📷</div>
+      <div class="photo-label">Foto carte <span id="t1-photo-name">Team 1</span></div>
+    </label>
+    <input type="file" id="file1" accept="image/*" onchange="handlePhoto(event,'t1')">
+    <div class="photo-result" id="t1-photo-result" style="display:none;"></div>
+
+    <label for="file2" class="photo-area" style="display:block; cursor:pointer; margin-top:10px; margin-bottom:8px;">
+      <div class="photo-icon">📷</div>
+      <div class="photo-label">Foto carte <span id="t2-photo-name">Team 2</span></div>
+    </label>
+    <input type="file" id="file2" accept="image/*" onchange="handlePhoto(event,'t2')">
+    <div class="photo-result" id="t2-photo-result" style="display:none;"></div>
+  </div>
+
+  <button class="btn btn-primary" onclick="confirmHand()">Conferma mano →</button>
+  <button class="btn btn-danger" onclick="goSetup()" style="margin-top:8px;">Nuova partita</button>
+</div>
+
+<!-- HISTORY -->
+<div id="screen-history" class="screen">
+  <div class="topbar">
+    <h2>Storico mani</h2>
+    <button class="btn btn-sm btn-secondary" onclick="show('game')">← Torna</button>
+  </div>
+  <div class="scoreboard" style="margin-bottom:1rem;">
+    <div class="score-card">
+      <div class="score-label" id="h-t1-label">Team 1</div>
+      <div class="score-value" id="h-t1-total">0</div>
+    </div>
+    <div class="score-card">
+      <div class="score-label" id="h-t2-label">Team 2</div>
+      <div class="score-value" id="h-t2-total">0</div>
+    </div>
+  </div>
+  <div class="card">
+    <div id="history-list"><p style="font-size:14px;color:#aaa;">Nessuna mano ancora.</p></div>
+  </div>
+</div>
+
+<!-- WINNER -->
+<div id="screen-winner" class="screen">
+  <div class="winner-wrap">
+    <div class="trophy">🏆</div>
+    <div class="winner-title" id="winner-name"></div>
+    <div class="winner-score" id="winner-score"></div>
+  </div>
+  <div class="scoreboard">
+    <div class="score-card">
+      <div class="score-label" id="w-t1-label">Team 1</div>
+      <div class="score-value" id="w-t1-total">0</div>
+    </div>
+    <div class="score-card">
+      <div class="score-label" id="w-t2-label">Team 2</div>
+      <div class="score-value" id="w-t2-total">0</div>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="goSetup()" style="margin-top:1rem;">Nuova partita</button>
+</div>
+
+</div>
+<script>
+let G = {
+  t1: { name:'Team 1', total:0 },
+  t2: { name:'Team 2', total:0 },
+  target: 1005,
+  hand: 1,
+  history: [],
+  counts: { t1:{bp:0,bsp:0,bs:0}, t2:{bp:0,bsp:0,bs:0} },
+  poz: { t1:false, t2:false },
+  photo: { t1:null, t2:null }
+};
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function startGame() {
+  G.t1.name = document.getElementById('t1name').value.trim() || 'Team 1';
+  G.t2.name = document.getElementById('t2name').value.trim() || 'Team 2';
+  G.t1.total = 0; G.t2.total = 0;
+  G.target = parseInt(document.getElementById('target').value);
+  G.hand = 1; G.history = [];
+  resetCounts();
+  updateGameUI();
+  show('game');
+}
+
+function togglePoz(team) {
+  // Ignore if this team is the closer
+  const closer = document.getElementById('closer').value;
+  if (closer === team) return;
+  G.poz[team] = !G.poz[team];
+  renderToggle(team);
+  updateHandTotals();
+}
+
+function renderToggle(team) {
+  const tog = document.getElementById(team+'-poz-toggle');
+  const closer = document.getElementById('closer').value;
+  const isDisabled = closer === team;
+  tog.className = 'toggle' + (G.poz[team] ? ' on' : '') + (isDisabled ? ' disabled' : '');
+}
+
+function resetCounts() {
+  G.counts = { t1:{bp:0,bsp:0,bs:0}, t2:{bp:0,bsp:0,bs:0} };
+  G.poz = { t1:false, t2:false };
+  G.photo = { t1:null, t2:null };
+  document.getElementById('closer').value = '';
+  ['t1','t2'].forEach(t => {
+    ['bp','bsp','bs'].forEach(k => { document.getElementById(t+'-'+k).textContent='0'; });
+    renderToggle(t);
+    document.getElementById(t+'-neg').value='';
+    const r = document.getElementById(t+'-photo-result');
+    r.style.display='none'; r.innerHTML='';
+  });
+  document.getElementById('file1').value='';
+  document.getElementById('file2').value='';
+  updateHandTotals();
+}
+
+function updateGameUI() {
+  document.getElementById('hand-num').textContent = G.hand;
+  ['t1','t2'].forEach(t => {
+    const n = G[t].name;
+    document.getElementById(t+'-label').textContent = n;
+    document.getElementById(t+'-total').textContent = G[t].total;
+    document.getElementById(t+'-buraco-label').textContent = 'Burrachi ' + n;
+    document.getElementById(t+'-photo-name').textContent = n;
+    document.getElementById('closer-'+t).textContent = n;
+    if(G.target>0) document.getElementById(t+'-target').textContent = 'obiettivo: '+G.target;
+    else document.getElementById(t+'-target').textContent = '';
+  });
+}
+
+function change(team, key, delta) {
+  G.counts[team][key] = Math.max(0, G.counts[team][key]+delta);
+  document.getElementById(team+'-'+key).textContent = G.counts[team][key];
+  updateHandTotals();
+}
+
+function calcHand(team) {
+  const c = G.counts[team];
+  const closer = document.getElementById('closer').value === team ? 100 : 0;
+  const photo = G.photo[team] || 0;
+  const neg = parseInt(document.getElementById(team+'-neg').value) || 0;
+  const poz = G.poz[team] ? 100 : 0;
+  return closer + c.bp*200 + c.bsp*150 + c.bs*100 - poz - neg + photo;
+}
+
+function updateHandTotals() {
+  const closer = document.getElementById('closer').value;
+  ['t1','t2'].forEach(t => {
+    // If this team closed, force poz off and re-render toggle as disabled
+    if (closer === t && G.poz[t]) {
+      G.poz[t] = false;
+    }
+    renderToggle(t);
+    const tot = calcHand(t);
+    const el = document.getElementById(t+'-hand-tot');
+    el.textContent = tot;
+    el.className = 'hand-total-val ' + (tot < 0 ? 'negative' : 'positive');
+  });
+}
+
+function confirmHand() {
+  const s1 = calcHand('t1'), s2 = calcHand('t2');
+  G.t1.total += s1; G.t2.total += s2;
+  G.history.unshift({ hand:G.hand, s1, s2, r1:G.t1.total, r2:G.t2.total });
+  G.hand++;
+  if(G.target>0 && (G.t1.total>=G.target || G.t2.total>=G.target)) {
+    const winner = G.t1.total >= G.t2.total ? G.t1 : G.t2;
+    document.getElementById('winner-name').textContent = winner.name + ' vince!';
+    document.getElementById('winner-score').textContent = G.t1.total + ' – ' + G.t2.total;
+    document.getElementById('w-t1-label').textContent = G.t1.name;
+    document.getElementById('w-t2-label').textContent = G.t2.name;
+    document.getElementById('w-t1-total').textContent = G.t1.total;
+    document.getElementById('w-t2-total').textContent = G.t2.total;
+    show('winner'); return;
+  }
+  resetCounts();
+  updateGameUI();
+}
+
+function showHistory() {
+  document.getElementById('h-t1-label').textContent = G.t1.name;
+  document.getElementById('h-t2-label').textContent = G.t2.name;
+  document.getElementById('h-t1-total').textContent = G.t1.total;
+  document.getElementById('h-t2-total').textContent = G.t2.total;
+  const list = document.getElementById('history-list');
+  if(!G.history.length) { list.innerHTML='<p style="font-size:14px;color:#aaa;">Nessuna mano ancora.</p>'; show('history'); return; }
+  list.innerHTML = G.history.map(h=>`
+    <div class="history-row">
+      <span class="history-hand">Mano ${h.hand}</span>
+      <span class="history-delta" style="color:${h.s1<0?'#c0392b':'#2d6a4f'}">${h.s1>=0?'+':''}${h.s1}</span>
+      <span class="history-delta" style="color:${h.s2<0?'#c0392b':'#2d6a4f'}">${h.s2>=0?'+':''}${h.s2}</span>
+      <span class="history-running">${h.r1} – ${h.r2}</span>
+    </div>`).join('');
+  show('history');
+}
+
+function goSetup() { show('setup'); }
+
+async function handlePhoto(event, team) {
+  const file = event.target.files[0];
+  if(!file) return;
+  const el = document.getElementById(team+'-photo-result');
+  el.style.display='block';
+  el.innerHTML='<span class="spinner"></span> Analisi AI in corso...';
+  const toBase64 = f => new Promise((res,rej)=>{
+    const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=()=>rej(); r.readAsDataURL(f);
+  });
+  try {
+    const b64 = await toBase64(file);
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({
+        model:'claude-haiku-4-5-20251001', max_tokens:800,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:file.type,data:b64}},
+          {type:'text',text:'Sei un assistente per il gioco del Burraco italiano. Analizza questa foto di carte da gioco calate sul tavolo e conta i punti totali. Regole: Asso=15pt, 2(pinella)=20pt, 3-7=5pt, 8-Re=10pt, Jolly=30pt. Rispondi SOLO con JSON puro senza markdown: {"cards":[{"card":"nome carta","value":N}],"total":N}'}
+        ]}]
+      })
+    });
+    const data = await resp.json();
+    const raw = data.content?.find(b=>b.type==='text')?.text || '{}';
+    const parsed = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    G.photo[team] = parsed.total || 0;
+    const cardList = (parsed.cards||[]).map(c=>`${c.card} (${c.value}pt)`).join(', ');
+    el.innerHTML = `<strong>+${parsed.total} punti dal tavolo</strong><br><span style="color:#888;font-size:12px;">${cardList}</span>`;
+    updateHandTotals();
+  } catch(err) {
+    el.innerHTML='<span style="color:#c0392b;">⚠ Errore. Inserisci i punti del tavolo manualmente o riprova.</span>';
+  }
+}
+</script>
+</body>
+</html>
